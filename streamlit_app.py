@@ -1,13 +1,16 @@
 import streamlit as st
 import requests
 import pandas as pd
+import re
+import datetime
+
 st.title("Prebrief")
-st.badge("You as the pilot in command are responsible for the safety of the flight, this DOES NOT replace due dillegence", icon=":material/emergency_home:", color="red")
+st.badge("You as the pilot in command are responsible for the safety of the flight, this DOES NOT replace due diligence", icon=":material/emergency_home:", color="red")
 st.badge("This app uses OPENAIP data, please feel free to contribute at openaip.net ", icon=":material/info:")
 search = st.text_input("Search for an airport", "UPV")
 
-# API call
-url = 'https://api.core.openaip.net/api/airports?page=1&limit=1000&sortDesc=true&country=GB&searchOptLwc=true&search=' + search
+# API call to get airport data
+url = f'https://api.core.openaip.net/api/airports?page=1&limit=1000&sortDesc=true&country=GB&searchOptLwc=true&search={search}'
 headers = {
     'accept': 'application/json',
     'x-openaip-api-key': st.secrets["key"]
@@ -15,12 +18,109 @@ headers = {
 response = requests.get(url, headers=headers)
 data = response.json()
 
-# Airport data
+# Function to get METAR data
+API_KEY = st.secrets["weather"]
+
+def get_metar(icao):
+    headers = {"X-API-Key": API_KEY}
+    primary_url = f"https://api.checkwx.com/metar/{icao}/decoded"
+    response = requests.get(primary_url, headers=headers).json()
+    if response.get("data"):
+        return response
+    fallback_url = f"https://api.checkwx.com/metar/{icao}/nearest/decoded"
+    return requests.get(fallback_url, headers=headers).json()
+
+def decode_clouds_from_metar(raw_metar):
+    cloud_amounts = {
+        'FEW': 'Few (1–2 oktas)',
+        'SCT': 'Scattered (3–4 oktas)',
+        'BKN': 'Broken (5–7 oktas)',
+        'OVC': 'Overcast (8 oktas)',
+        'NSC': 'No significant cloud',
+        'VV': 'Vertical visibility (sky obscured)'
+    }
+
+    cloud_types = {
+        'TCU': 'Towering Cumulus',
+        'CB': 'Cumulonimbus'
+    }
+
+    cloud_emojis = {
+        'FEW': '🌤️',
+        'SCT': '⛅',
+        'BKN': '🌥️',
+        'OVC': '☁️',
+        'NSC': '🌞',
+        'VV': '🌫️'
+    }
+
+    type_emojis = {
+        'TCU': '⛰️',
+        'CB': '⛈️'
+    }
+
+    if 'CAVOK' in raw_metar:
+        return ['🌞 CAVOK: Clear skies, visibility OK']
+    
+    if 'NCD' in raw_metar:
+        return ['🌤️ No significant clouds detected']
+
+    cloud_groups = re.findall(r'\b(FEW|SCT|BKN|OVC|NSC|VV)(\d{3})(CB|TCU)?\b', raw_metar)
+
+    decoded_clouds = []
+    for amount, height, ctype in cloud_groups:
+        amount_desc = cloud_amounts.get(amount, amount)
+        height_ft = int(height) * 100
+        base_emoji = cloud_emojis.get(amount, '☁️')
+        type_desc = cloud_types.get(ctype, '')
+        type_emoji = type_emojis.get(ctype, '')
+
+        cloud_str = f"{base_emoji} {amount_desc} at {height_ft} ft"
+        if ctype:
+            cloud_str += f" ({type_desc}) {type_emoji}"
+        decoded_clouds.append(cloud_str)
+
+    return decoded_clouds
+
+def get_wind_emoji(speed):
+    if speed is None:
+        return "❓"
+    if speed < 5:
+        return "🍃"
+    elif speed < 15:
+        return "🌬️"
+    else:
+        return "💨"
+
+def get_temp_emoji(temp):
+    if temp is None:
+        return "❓"
+    if temp < 0:
+        return "❄️"
+    elif temp < 15:
+        return "🫕"
+    elif temp < 25:
+        return "🌤️"
+    else:
+        return "🔥"
+
+def extract_obs_time(raw_metar):
+    # Regex pattern to extract the observation time (hhmmZ format)
+    match = re.search(r'\d{4}Z', raw_metar)
+    if match:
+        # Extract the time (hhmmZ), remove the 'Z' and format it
+        obs_time = match.group(0)[:-1]  # Remove 'Z' (e.g., '082050' -> '082050')
+        # Convert to 24-hour format time (hh:mm UTC)
+        formatted_time = datetime.datetime.strptime(obs_time, '%H%M').strftime('%H:%M UTC')
+        return formatted_time
+    return "N/A"  # Return "N/A" if no match is found
+
+# Display airport data and METAR details
 if data["items"]:
     airport = data["items"][0]
 
     st.markdown("---")
-    st.header(f"✈️ {airport['name']} ({airport.get('icaoCode', 'N/A')})")
+    st.header(f"✈️ {airport['name']} ({airport.get('icaoCode', '')})")
 
     # General Info
     st.subheader("📍 General Info")
@@ -29,7 +129,6 @@ if data["items"]:
         st.write(f"**Country:** {airport.get('country', 'N/A')}")
         st.write(f"**ICAO Code:** {airport.get('icaoCode', 'Nil')}")
         st.write(f"**IATA Code:** {airport.get('iataCode', 'Nil')}")
-        # Define mapping of type numbers to human-readable descriptions
         airport_type_map = {
             0: "Airport (civil/military)",
             1: "Glider Site",
@@ -46,12 +145,8 @@ if data["items"]:
             12: "Agricultural Landing Strip",
             13: "Altiport"
         }
-
-        # Get the type number
         airport_type_number = airport.get("type", None)
-        # Get the description using the map
         airport_type_text = airport_type_map.get(airport_type_number, "Unknown Type")
-
         st.write(f"**Type:** {airport_type_text}")
     with col2:
         st.write(f"**Private:** {'✅ Yes' if airport.get('private') else '❌ No'}")
@@ -61,62 +156,50 @@ if data["items"]:
 
     st.markdown(f"📝 **Remarks:** {airport.get('remarks', 'None')}")
 
-    # Map
-    coords = airport.get("geometry", {}).get("coordinates", [None, None])
-    if coords and coords[0] and coords[1]:
-        st.subheader("🗺️ Location")
-        st.map(pd.DataFrame({'lat': [coords[1]], 'lon': [coords[0]]}))
+    # METAR Data
+    icao_code = airport.get('icaoCode', '')
+    if icao_code:
+        metar_data = get_metar(icao_code)
+        if metar_data and "data" in metar_data:
+            metar = metar_data["data"][0]
+            st.subheader("🌤️ METAR Report")
+            st.markdown(f"`{metar.get('raw_text', 'N/A')}`")
 
-    # Frequencies
-    st.subheader("📡 Frequencies")
-    for freq in airport.get("frequencies", []):
-        with st.expander(freq.get("name", "Unnamed Frequency")):
-            st.write(f"**Value:** {freq['value']} MHz")
+            col1, col2, col3 = st.columns(3)
 
-            # Frequency type mapping
-            frequency_type_map = {
-                0: "Approach",
-                1: "APRON",
-                2: "Arrival",
-                3: "Center",
-                4: "CTAF",
-                5: "Delivery",
-                6: "Departure",
-                7: "FIS",
-                8: "Gliding",
-                9: "Ground",
-                10: "Information",
-                11: "Multicom",
-                12: "Unicom",
-                13: "Radar",
-                14: "Tower",
-                15: "ATIS",
-                16: "Radio",
-                17: "Other",
-                18: "AIRMET",
-                19: "AWOS",
-                20: "Lights",
-                21: "VOLMET",
-                22: "AFIS"
-            }
+            # Temperature
+            temp = metar.get("temperature", {}).get("celsius")
+            with col1:
+                st.metric(f"{get_temp_emoji(temp)} Temperature", f"{temp} °C" if temp is not None else "N/A")
 
-            # Get the frequency type description
-            freq_type_number = freq.get("type", None)
-            freq_type_text = frequency_type_map.get(freq_type_number, "Unknown Type")
+            # Wind
+            wind = metar.get("wind", {})
+            wind_speed = wind.get("speed_kts")
+            wind_dir = wind.get("degrees")
+            with col2:
+                st.metric(f"{get_wind_emoji(wind_speed)} Wind", f"{wind_dir}° at {wind_speed} kt" if wind_speed and wind_dir else "N/A")
+            
+            # Visibility
+            visibility = metar.get("visibility", {}).get("meters")
+            with col3:
+                st.metric("👁️ Visibility", f"{visibility} m" if visibility else "N/A")
 
-            st.write(f"**Type:** {freq_type_text}")
+            # Clouds
+            col4 = st.columns(1)
+            with col4[0]:
+                decoded_clouds = decode_clouds_from_metar(metar.get("raw_text", ""))
+                for cloud in decoded_clouds:
+                    st.metric("Clouds", cloud)
 
-
-            st.write(f"**Public Use:** {'Yes' if freq.get('publicUse') else 'No'}")
-            if freq.get("remarks"):
-                st.write(f"**Remarks:** {freq['remarks']}")
+            # Observation Time
+            obs_time = extract_obs_time(metar.get("raw_text", ""))
+            st.markdown(f"🕒 Observation Time: {obs_time}")
 
 else:
     st.warning("No airport data found.")
 
 # Runways
 st.subheader("🛬 Runways")
-
 runways = airport.get("runways", [])
 if runways:
     for runway in runways:
@@ -129,72 +212,10 @@ if runways:
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.markdown(f"**True Heading:** {runway.get('trueHeading', 'N/A')}°")
-                st.markdown(f"**Aligned True North:** {'✅ Yes' if runway.get('alignedTrueNorth') else '❌ No'}")
-                # Turn direction mapping
-                turn_direction_map = {
-                    0: "Right",
-                    1: "Left",
-                    2: "Both"
-                }
-
-                # Get the turn direction description
-                turn_direction_value = runway.get("turnDirection", None)
-                if airport_type_number == 4  or airport_type_number == 7:
-                    turn_direction_text = turn_direction_map.get(turn_direction_value, "N/A")
-                else:
-                    turn_direction_text = turn_direction_map.get(turn_direction_value, "Unknown perhaps you could help us by contributing at openaip.net thanks")
-
-                st.markdown(f"**Turn Direction:** {turn_direction_text}")
-            
             with col2:
                 st.markdown(f"**Length:** {dim.get('length', {}).get('value', 'N/A')} m")
-                st.markdown(f"**Width:** {dim.get('width', {}).get('value', 'N/A')} m")
-                
-                # Runway surface composition mapping
-                surface_composition_map = {
-                    0: "Asphalt",
-                    1: "Concrete",
-                    2: "Grass",
-                    3: "Sand",
-                    4: "Water",
-                    5: "Bituminous tar or asphalt (\"earth cement\")",
-                    6: "Brick",
-                    7: "Macadam or tarmac (crushed rock)",
-                    8: "Stone",
-                    9: "Coral",
-                    10: "Clay",
-                    11: "Laterite",
-                    12: "Gravel",
-                    13: "Earth",
-                    14: "Ice",
-                    15: "Snow",
-                    16: "Protective laminate (rubber)",
-                    17: "Metal",
-                    18: "Landing mat (aluminium)",
-                    19: "Pierced steel planking",
-                    20: "Wood",
-                    21: "Non-bituminous mix",
-                    22: "Unknown"
-                }
-
-                # Get surface description
-                surface_type = surface.get("mainComposite", None)
-                surface_text = surface_composition_map.get(surface_type, "Unknown")
-
-                st.markdown(f"**Surface:** {surface_text}")
-
-
-
             with col3:
                 st.markdown(f"**TORA:** {tora.get('value', 'N/A')} m")
-                st.markdown(f"**LDA:** {lda.get('value', 'N/A')} m")
-                st.markdown(f"**Main Runway:** {'✅ Yes' if runway.get('mainRunway') else '❌ No'}")
 
-            st.markdown("---")
-            col4, col5 = st.columns(2)
-            with col4:
-                st.markdown(f"**Take Off Only:** {'✅ Yes' if runway.get('takeOffOnly') else '❌ No'}")
-            with col5:
-                st.markdown(f"**Landing Only:** {'✅ Yes' if runway.get('landingOnly') else '❌ No'}")
 else:
     st.info("No runway data available.")
