@@ -27,10 +27,32 @@ if data["items"]:
     col1, col2 = st.columns(2)
     with col1:
         st.write(f"**Country:** {airport.get('country', 'N/A')}")
-        st.write(f"**ICAO Code:** {airport.get('icaoCode', 'N/A')}")
-        st.write(f"**IATA Code:** {airport.get('iataCode', 'N/A')}")
-        st.write(f"**Type:** {airport.get('type', 'N/A')}")
-        st.write(f"**Magnetic Declination:** {airport.get('magneticDeclination', 'N/A')}°")
+        st.write(f"**ICAO Code:** {airport.get('icaoCode', 'Nil')}")
+        st.write(f"**IATA Code:** {airport.get('iataCode', 'Nil')}")
+        # Define mapping of type numbers to human-readable descriptions
+        airport_type_map = {
+            0: "Airport (civil/military)",
+            1: "Glider Site",
+            2: "Airfield Civil",
+            3: "International Airport",
+            4: "Heliport Military",
+            5: "Military Aerodrome",
+            6: "Ultra Light Flying Site",
+            7: "Heliport Civil",
+            8: "Aerodrome Closed",
+            9: "Airport resp. Airfield IFR",
+            10: "Airfield Water",
+            11: "Landing Strip",
+            12: "Agricultural Landing Strip",
+            13: "Altiport"
+        }
+
+        # Get the type number
+        airport_type_number = airport.get("type", None)
+        # Get the description using the map
+        airport_type_text = airport_type_map.get(airport_type_number, "Unknown Type")
+
+        st.write(f"**Type:** {airport_type_text}")
     with col2:
         st.write(f"**Private:** {'✅ Yes' if airport.get('private') else '❌ No'}")
         st.write(f"**PPR Required:** {'✅ Yes' if airport.get('ppr') else '❌ No'}")
@@ -50,7 +72,41 @@ if data["items"]:
     for freq in airport.get("frequencies", []):
         with st.expander(freq.get("name", "Unnamed Frequency")):
             st.write(f"**Value:** {freq['value']} MHz")
-            st.write(f"**Type:** {freq['type']}")
+
+            # Frequency type mapping
+            frequency_type_map = {
+                0: "Approach",
+                1: "APRON",
+                2: "Arrival",
+                3: "Center",
+                4: "CTAF",
+                5: "Delivery",
+                6: "Departure",
+                7: "FIS",
+                8: "Gliding",
+                9: "Ground",
+                10: "Information",
+                11: "Multicom",
+                12: "Unicom",
+                13: "Radar",
+                14: "Tower",
+                15: "ATIS",
+                16: "Radio",
+                17: "Other",
+                18: "AIRMET",
+                19: "AWOS",
+                20: "Lights",
+                21: "VOLMET",
+                22: "AFIS"
+            }
+
+            # Get the frequency type description
+            freq_type_number = freq.get("type", None)
+            freq_type_text = frequency_type_map.get(freq_type_number, "Unknown Type")
+
+            st.write(f"**Type:** {freq_type_text}")
+
+
             st.write(f"**Public Use:** {'Yes' if freq.get('publicUse') else 'No'}")
             if freq.get("remarks"):
                 st.write(f"**Remarks:** {freq['remarks']}")
@@ -74,12 +130,60 @@ if runways:
             with col1:
                 st.markdown(f"**True Heading:** {runway.get('trueHeading', 'N/A')}°")
                 st.markdown(f"**Aligned True North:** {'✅ Yes' if runway.get('alignedTrueNorth') else '❌ No'}")
-                st.markdown(f"**Turn Direction:** {runway.get('turnDirection', 'N/A')}")
+                # Turn direction mapping
+                turn_direction_map = {
+                    0: "Right",
+                    1: "Left",
+                    2: "Both"
+                }
+
+                # Get the turn direction description
+                turn_direction_value = runway.get("turnDirection", None)
+                if airport_type_number == 4  or airport_type_number == 7:
+                    turn_direction_text = turn_direction_map.get(turn_direction_value, "N/A")
+                else:
+                    turn_direction_text = turn_direction_map.get(turn_direction_value, "Unknown perhaps you could help us by contributing at openaip.net thanks")
+
+                st.markdown(f"**Turn Direction:** {turn_direction_text}")
             
             with col2:
                 st.markdown(f"**Length:** {dim.get('length', {}).get('value', 'N/A')} m")
                 st.markdown(f"**Width:** {dim.get('width', {}).get('value', 'N/A')} m")
-                st.markdown(f"**Surface:** {surface.get('mainComposite', 'N/A')}")
+                
+                # Runway surface composition mapping
+                surface_composition_map = {
+                    0: "Asphalt",
+                    1: "Concrete",
+                    2: "Grass",
+                    3: "Sand",
+                    4: "Water",
+                    5: "Bituminous tar or asphalt (\"earth cement\")",
+                    6: "Brick",
+                    7: "Macadam or tarmac (crushed rock)",
+                    8: "Stone",
+                    9: "Coral",
+                    10: "Clay",
+                    11: "Laterite",
+                    12: "Gravel",
+                    13: "Earth",
+                    14: "Ice",
+                    15: "Snow",
+                    16: "Protective laminate (rubber)",
+                    17: "Metal",
+                    18: "Landing mat (aluminium)",
+                    19: "Pierced steel planking",
+                    20: "Wood",
+                    21: "Non-bituminous mix",
+                    22: "Unknown"
+                }
+
+                # Get surface description
+                surface_type = surface.get("mainComposite", None)
+                surface_text = surface_composition_map.get(surface_type, "Unknown")
+
+                st.markdown(f"**Surface:** {surface_text}")
+
+
 
             with col3:
                 st.markdown(f"**TORA:** {tora.get('value', 'N/A')} m")
