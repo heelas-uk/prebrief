@@ -199,55 +199,52 @@ else:
     st.warning("No airport data found.")
 
     # Map
-     coords = airport.get("geometry", {}).get("coordinates", [None, None])
-     if coords and coords[0] and coords[1]:
-         st.subheader("🗺️ Location")
-         st.map(pd.DataFrame({'lat': [coords[1]], 'lon': [coords[0]]}))
- 
-     # Frequencies
-     st.subheader("📡 Frequencies")
-     for freq in airport.get("frequencies", []):
-         with st.expander(freq.get("name", "Unnamed Frequency")):
-             st.write(f"**Value:** {freq['value']} MHz")
- 
-             # Frequency type mapping
-             frequency_type_map = {
-                 0: "Approach",
-                 1: "APRON",
-                 2: "Arrival",
-                 3: "Center",
-                 4: "CTAF",
-                 5: "Delivery",
-                 6: "Departure",
-                 7: "FIS",
-                 8: "Gliding",
-                 9: "Ground",
-                 10: "Information",
-                 11: "Multicom",
-                 12: "Unicom",
-                 13: "Radar",
-                 14: "Tower",
-                 15: "ATIS",
-                 16: "Radio",
-                 17: "Other",
-                 18: "AIRMET",
-                 19: "AWOS",
-                 20: "Lights",
-                 21: "VOLMET",
-                 22: "AFIS"
-             }
- 
-             # Get the frequency type description
-             freq_type_number = freq.get("type", None)
-             freq_type_text = frequency_type_map.get(freq_type_number, "Unknown Type")
- 
-             st.write(f"**Type:** {freq_type_text}")
- 
- 
-             st.write(f"**Public Use:** {'Yes' if freq.get('publicUse') else 'No'}")
-             if freq.get("remarks"):
-                 st.write(f"**Remarks:** {freq['remarks']}")
+    coords = airport.get("geometry", {}).get("coordinates", [None, None])
+    if coords and coords[0] and coords[1]:
+        st.subheader("🗺️ Location")
+        st.map(pd.DataFrame({'lat': [coords[1]], 'lon': [coords[0]]}))
 
+    # Frequencies
+    st.subheader("📡 Frequencies")
+    for freq in airport.get("frequencies", []):
+        with st.expander(freq.get("name", "Unnamed Frequency")):
+            st.write(f"**Value:** {freq['value']} MHz")
+    
+            # Frequency type mapping
+            frequency_type_map = {
+                0: "Approach",
+                1: "APRON",
+                2: "Arrival",
+                3: "Center",
+                4: "CTAF",
+                5: "Delivery",
+                6: "Departure",
+                7: "FIS",
+                8: "Gliding",
+                9: "Ground",
+                10: "Information",
+                11: "Multicom",
+                12: "Unicom",
+                13: "Radar",
+                14: "Tower",
+                15: "ATIS",
+                16: "Radio",
+                17: "Other",
+                18: "AIRMET",
+                19: "AWOS",
+                20: "Lights",
+                21: "VOLMET",
+                22: "AFIS"
+            }
+
+            # Get the frequency type description
+            freq_type_number = freq.get("type", None)
+            freq_type_text = frequency_type_map.get(freq_type_number, "Unknown Type")
+
+            st.write(f"**Type:** {freq_type_text}")
+            st.write(f"**Public Use:** {'Yes' if freq.get('publicUse') else 'No'}")
+            if freq.get("remarks"):
+                st.write(f"**Remarks:** {freq['remarks']}")
 
 # Runways
 st.subheader("🛬 Runways")
