@@ -1,8 +1,8 @@
-# 🎈 Blank app template
+# Prebrief
 
-A simple Streamlit app template for you to modify!
+A simple Streamlit app that should when completed povide prelinary and not complete airfield infomation.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+Made with open AIP data this data is under CC BY-NC 4.0. Feel free to contribute with a pull request.
 
 ### How to run it on your own machine
 
