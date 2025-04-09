@@ -7,7 +7,7 @@ import datetime
 st.title("Prebrief")
 st.badge("You as the pilot in command are responsible for the safety of the flight, this DOES NOT replace due diligence", icon=":material/emergency_home:", color="red")
 st.badge("This app uses OPENAIP data, please feel free to contribute at openaip.net ", icon=":material/info:")
-search = st.text_input("Search for an airport", "UPV")
+search = st.text_input("Search for an airport", "UPV", help="Use an a code in the ICAO format (4 letters)")
 
 # API call to get airport data
 url = f'https://api.core.openaip.net/api/airports?page=1&limit=1000&sortDesc=true&searchOptLwc=true&search={search}'
