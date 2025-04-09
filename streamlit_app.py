@@ -10,7 +10,7 @@ st.badge("This app uses OPENAIP data, please feel free to contribute at openaip.
 search = st.text_input("Search for an airport", "UPV")
 
 # API call to get airport data
-url = f'https://api.core.openaip.net/api/airports?page=1&limit=1000&sortDesc=true&country=GB&searchOptLwc=true&search={search}'
+url = f'https://api.core.openaip.net/api/airports?page=1&limit=1000&sortDesc=true&searchOptLwc=true&search={search}'
 headers = {
     'accept': 'application/json',
     'x-openaip-api-key': st.secrets["key"]
