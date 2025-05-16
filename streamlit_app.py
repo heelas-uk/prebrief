@@ -132,12 +132,12 @@ if data["items"]:
         airport_type_map = {
             0: "Airport (civil/military)",
             1: "Glider Site",
-            2: "Airfield Civil",
+            2: "Airfield - Civil",
             3: "International Airport",
             4: "Heliport Military",
             5: "Military Aerodrome",
             6: "Ultra Light Flying Site",
-            7: "Heliport Civil",
+            7: "Heliport - Civil",
             8: "Aerodrome Closed",
             9: "Airport resp. Airfield IFR",
             10: "Airfield Water",
@@ -152,7 +152,7 @@ if data["items"]:
         st.write(f"**Private:** {'✅ Yes' if airport.get('private') else '❌ No'}")
         st.write(f"**PPR Required:** {'✅ Yes' if airport.get('ppr') else '❌ No'}")
         st.write(f"**Skydive Activity:** {'✅ Yes' if airport.get('skydiveActivity') else '❌ No'}")
-        st.write(f"**Winch Only:** {'✅ Yes' if airport.get('winchOnly') else '❌ No'}")
+        st.write(f"**Winch Only Glider Site:** {'✅ Yes' if airport.get('winchOnly') else '❌ No'}")
 
     st.markdown(f"📝 **Remarks:** {airport.get('remarks', 'None')}")
 
@@ -263,7 +263,7 @@ if runways:
             with col2:
                 st.markdown(f"**Length:** {dim.get('length', {}).get('value', 'N/A')} m")
             with col3:
-                st.markdown(f"**TORA:** {tora.get('value', 'N/A')} m")
+                st.markdown(f"**Take off runa avilable:** {tora.get('value', 'N/A')} m")
 
 else:
     st.info("No runway data available.")
