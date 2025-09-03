@@ -17,5 +17,5 @@ Note you will need a OPENAIP API key which can be obtained for free
 2. Run the app
 
    ```
-   $ streamlit run streamlit_app.py
+   $ streamlit run Home.py
    ```
