@@ -6,7 +6,7 @@ Made with open AIP data this data is under CC BY-NC 4.0. Feel free to contribute
 
 ### How to run it on your own machine
 
-Note you will need a OPENAIP API key which can be obtained for free
+Note you will need a OPENAIP API key which can be obtained for free this willl have to be put in the st.secrets 
 
 1. Install the requirements
 

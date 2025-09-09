@@ -3,10 +3,12 @@ import requests
 import pandas as pd
 import re
 import datetime
+import folium
+from streamlit_folium import st_folium
 
 st.title("Prebrief")
 
-search = st.text_input("Search for an airport", "KJFK", help="Use an airport code in the ICAO format (4 letters)")
+search = st.text_input("Search for an airport", "London City", help="Use an airport code in the ICAO format (4 letters)")
 
 # API call to get airport data
 url = f'https://api.core.openaip.net/api/airports?page=1&limit=1000&sortDesc=true&searchOptLwc=true&search={search}'
@@ -114,12 +116,48 @@ def extract_obs_time(raw_metar):
         return formatted_time
     return "N/A"  # Return "N/A" if no match is found
 
+def get_osm_runways_helipads(lat, lon, radius=2000):
+    # Overpass QL query for runways and helipads
+    query = f"""
+    [out:json];
+    (
+      way["aeroway"="runway"](around:{radius},{lat},{lon});
+      way["aeroway"="helipad"](around:{radius},{lat},{lon});
+    );
+    out geom;
+    """
+    url = "http://overpass-api.de/api/interpreter"
+    response = requests.post(url, data={'data': query})
+    data = response.json()
+    features = []
+    for element in data.get("elements", []):
+        if "geometry" in element:
+            coords = [(pt["lat"], pt["lon"]) for pt in element["geometry"]]
+            tags = element.get("tags", {})
+            features.append((element["tags"]["aeroway"], coords, tags))
+    return features
+
 # Display airport data and METAR details
 if data["items"]:
     airport = data["items"][0]
 
     st.markdown("---")
     st.header(f"✈️ {airport['name']} ({airport.get('icaoCode', '')})")
+
+    # UK RASP link
+    if airport.get('country', '').strip().upper() in ["UNITED KINGDOM", "UK", "GB", "GREAT BRITAIN"]:
+        rasp_url = "https://rasp.stratus.org.uk/app/vb/viewer-basic.php"
+        st.markdown(
+            f"[Open UK RASP Forecast Viewer]({rasp_url})",
+            unsafe_allow_html=True
+        )
+    # Netherlands BLIPMAPS link
+    if airport.get('country', '').strip().upper() in ["NETHERLANDS", "NL", "THE NETHERLANDS"]:
+        blipmaps_url = "https://blipmaps.nl/NETHERLANDS/"
+        st.markdown(
+            f"[Open Netherlands BLIPMAPS Forecast Viewer]({blipmaps_url})",
+            unsafe_allow_html=True
+        )
 
     # General Info
     st.subheader("📍 General Info")
@@ -201,7 +239,27 @@ else:
 coords = airport.get("geometry", {}).get("coordinates", [None, None])
 if coords and coords[0] and coords[1]:
     st.subheader("🗺️ Location")
-    st.map(pd.DataFrame({'lat': [coords[1]], 'lon': [coords[0]]}))
+    lat, lon = coords[1], coords[0]
+    fmap = folium.Map(location=[lat, lon], zoom_start=15)
+    # Show OSM runways and helipads in red with popup on click
+    for aeroway_type, polyline, tags in get_osm_runways_helipads(lat, lon):
+        popup_lines = [f"<b>{aeroway_type.capitalize()}</b>"]
+        if "ref" in tags:
+            popup_lines.append(f"Designator: {tags['ref']}")
+        if "length" in tags:
+            popup_lines.append(f"Length: {tags['length']} m")
+        if "width" in tags:
+            popup_lines.append(f"Width: {tags['width']} m")
+        if "surface" in tags:
+            popup_lines.append(f"Surface: {tags['surface'].capitalize()}")
+        popup_html = "<br>".join(popup_lines)
+        folium.PolyLine(
+            polyline,
+            color="red",
+            weight=6,
+            popup=folium.Popup(popup_html, max_width=300)
+        ).add_to(fmap)
+    st_folium(fmap, width=700, height=500)
 
 # Frequencies
 st.subheader("📡 Frequencies")
