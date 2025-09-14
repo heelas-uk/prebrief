@@ -2,3 +2,4 @@ streamlit
 Authlib
 fpdf2
 folium
+streamlit_folium
